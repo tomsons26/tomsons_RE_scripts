@@ -18,7 +18,7 @@
 
 PLUGIN_NAME = "Import/Export Function Signature Plugin"
 
-__VERSION__ = '0.0.1'
+__VERSION__ = '0.0.2'
 __AUTHOR__ = 'tomsons26, cra0'
 
 import os
@@ -172,7 +172,7 @@ class ImportFileMenuHandler(idaapi.action_handler_t):
 
 				line = line.strip()
 
-				if not line or line.startswith("//"):
+				if not line or line.startswith("//") or line.startswith("*"):
 					continue
 
 				# Hash
@@ -543,9 +543,9 @@ class SigMaker:
 		signature = []
 		current_address = start
 
-		if (end - start) < 5:
-			print("Signature must be greater than 5 bytes")
-			return ""
+		#if (end - start) < 5:
+		#	print("Signature must be greater than 5 bytes")
+		#	return ""
 
 		# this is dragging next function instructions in was "while current_address <= end:"
 		while current_address < end:
@@ -566,9 +566,9 @@ class SigMaker:
 		signature = []
 		current_address = start
 
-		if (end - start) < 5:
-			print("Signature must be greater than 5 bytes")
-			return ""
+		#if (end - start) < 5:
+		#	print("Signature must be greater than 5 bytes")
+		#	return ""
 
 		while current_address <= end:
 			instruction = ida_ua.insn_t()
@@ -643,11 +643,17 @@ def export_signatures_go(ctx):
 				print(f"Failed to make a signature for function {func_name} at {start:x}")
 				continue
 
+			prefix = ""
+			if (end - start) < 5:
+				#print("Signature must be greater than 5 bytes")
+				#return ""
+				prefix = "*"
+
 			h = sha1(sig.encode('utf-8')).hexdigest()
 			#sig_list.append(f"{count},\"{func_name}\",\"{sig}\"\n")
 			#sig_list.append(f"{prefix}\"{func_name}\",\"{sig}\"\n")
 			#sig_list.append(f"\"{h}\",//\"{func_name}\",\"{sig}\"\n")
-			sig_list.append(f"\"{h}\",//\"{func_name}\"\n")
+			sig_list.append(f"{prefix}\"{h}\",//\"{func_name}\"\n")
 			count += 1
 
 		if count:
