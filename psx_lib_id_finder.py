@@ -39,7 +39,7 @@ class MyChoose(Choose):
 	CURADDRESS = 0x0
 
 	def GetByte(self):
-		b = Byte(self.CURADDRESS)
+		b = ida_bytes.get_byte(self.CURADDRESS)
 		self.CURADDRESS = self.CURADDRESS + 1
 		return b
 
@@ -151,14 +151,25 @@ class MyChoose(Choose):
 			else:
 				decoded = decoded + str("(%02d) %s ", index, "lib???")
 
-			decoded = decoded + str("[%x.%x.%x.%x] : " % (major1, minor1, minor2, minor3))
+			decoded = decoded + str("[%x.%x.%x.%x]" % (major1, minor1, minor2, minor3))
 
-			decoded = decoded + str("%s %02d %04d %02d:%02d\n" % (MONTHS[month - 1], day, year, hour, minute))
+			if day != 0:
+				decoded = decoded + str(" : %s %02d %04d %02d:%02d" % (MONTHS[month - 1], day, year, hour, minute))
 
 			break
 
 
 		return decoded
+		
+	# thanks hexrays
+	@staticmethod
+	def FindWrapper(binary_pattern, ea):
+		if ida_pro.IDA_SDK_VERSION >= 900:
+			ea = ida_bytes.find_bytes(binary_pattern, ea, flags=ida_bytes.BIN_SEARCH_FORWARD | ida_bytes.BIN_SEARCH_NOSHOW)
+		else:
+			ea = idc.find_binary(ea, ida_search.SEARCH_DOWN | ida_search.SEARCH_NEXT | ida_search.SEARCH_NOSHOW, binary_pattern)
+			
+		return ea
 
 	def process(self):
 
@@ -170,12 +181,13 @@ class MyChoose(Choose):
 		pattern = "50 73"
 
 		while True:
-			found_ea = idaapi.find_binary(found_ea+1, end_ea, pattern, 16, idaapi.SEARCH_DOWN)
+			found_ea = self.FindWrapper(pattern, found_ea+1)
 			if found_ea == idaapi.BADADDR:
 				break
 			decoded = self.TryDecodeID(found_ea)
 			if decoded != "":
 				list.append("0x%08X,%s\n" % (found_ea, decoded))
+				idc.set_cmt(found_ea, decoded, 0)
 
 		# turn into showable list
 		return [line.rstrip().split(',') for line in list]
