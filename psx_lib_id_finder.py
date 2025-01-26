@@ -1,7 +1,7 @@
 # PSX Lib ID finder
 # by tomsons26
 #
-# Scans though code section of the binary
+# Scans though sections of the binary
 #	attempting to find PSX LIB IDs
 #	shows a list of found IDs
 
@@ -44,13 +44,14 @@ class MyChoose(Choose):
 		return b
 
 	def TryDecodeID(self, addr):
+		mode = 0
 		decoded = ""
 
 		self.CURADDRESS = addr
 
 		# list from printver 1.11
 		PSXLIBNAMES = [
-			"libapi",	# 1.02
+			"libapi",		# pkver handled these
 			"libc",
 			"libc2",
 			"libcard",
@@ -63,48 +64,99 @@ class MyChoose(Choose):
 			"libgun",
 			"libmath",
 			"libpad",
-			"lib???",
+			"lib???",		# 13 NOTE printed as libpio in pkver
 			"libpress",
 			"libsio",
 			"libsnd",
 			"libspu",
-			"lib???",
-			"lib???",
+			"lib???",		# 18 NOTE printed as libstd in pkver
+			"lib???",		# 19 NOTE printed as libstr in pkver
 			"libtap",
-			"lib???",
+			"lib???",		# 21 NOTE printed as libcomb2 in pkver
 			"libds",
-			"lib???",
+			"lib???",		# 23 NOTE printed as libmdl in pkver
 			"libmcrd",
-			"libhmd",
-			"libmcx",	# added in 1.11
-			"mcgui"		# added in 1.11
+			"libhmd",		# added in printver 1.02
+			"libmcx",		# added in printver 1.11
+			"mcgui"			# added in printver 1.11
+		]
+		LIBCOUNT = len(PSXLIBNAMES)
+		
+		MONTHS = [
+			"Jan",
+			"Feb",
+			"Mar",
+			"Apr",
+			"May",
+			"Jun",
+			"Jul",
+			"Aug",
+			"Sep",
+			"Oct",
+			"Nov",
+			"Dec",
 		]
 
-		# skip over Ps identifier
-		self.GetByte()
-		self.GetByte()
+		# skip over Ps identifier that we already know matches
+		b0 = self.GetByte()
+		b1 = self.GetByte()
 
-		b = self.GetByte()
+		# while loop lets me keep this easy to read
+		while 1:
 
-		# magic check printver does, must be 0
-		if (b & 0xC0) == 0:
-			# extract possible index
-			index = b & 0x3F
-			# next 3 bytes must not be 0xFF
-			if self.GetByte() != 0xFF and self.GetByte() != 0xFF and self.GetByte() != 0xFF:
-				# get major ver byte
-				major = self.GetByte()
-				if major != 0xFF:
-					# get minor ver byte
-					minor = self.GetByte()
-					if minor != 0xFF:
-						# make sure its a known index
-						if len(PSXLIBNAMES) > index:
-							decoded = decoded + str("(%02d) %s : " % (index, PSXLIBNAMES[index]))
-						else:
-							decoded = decoded + str("(%02d) %s : ", index, "lib???")
+			# get library index
+			b2 = self.GetByte()
 
-						decoded = decoded + str("%x.%x.%x.%x\n" % ((major & 0xF0) >> 4, major & 0xF, (minor & 0xF0) >> 4, minor & 0xF))
+			# this byte must not be 0xFF
+			if b2 == 0xFF:
+				break
+
+			# must be 0 when masked with 0xC0
+			if (b2 & 0xC0) != 0:
+				break
+
+			index = (b2 & 0x3F)
+
+			# get timestamp
+			b3 = self.GetByte()
+			b4 = self.GetByte()
+			b5 = self.GetByte()
+
+			# these 3 bytes must not be 0xFF
+			if b3 == 0xFF or b4 == 0xFF or b5 == 0xFF:
+				break
+
+			year = 1996 + (b3 >> 0x04)
+			month = (b3 & 0xF)
+			day = (b4 >> 0x03)
+			hour = ((b4 & 0x07) << 0x02) | (b5 >> 0x06)
+			minute = (b5 & 0x3F)
+
+			# get version info
+			b6 = self.GetByte()
+			b7 = self.GetByte()
+
+			# these bytes must not be 0xFF
+			if b6 == 0xFF or b7 == 0xFF:
+				break
+
+			major1 = (b6 & 0xF0) >> 0x04
+			minor1 = (b6 & 0x0F)
+			minor2 = (b7 & 0xF0) >> 0x04
+			minor3 = (b7 & 0x0F)
+
+			# make sure its a known index
+			if LIBCOUNT > index:
+				decoded = decoded + str("(%02d) %s " % (index, PSXLIBNAMES[index]))
+			else:
+				decoded = decoded + str("(%02d) %s ", index, "lib???")
+
+			decoded = decoded + str("[%x.%x.%x.%x] : " % (major1, minor1, minor2, minor3))
+
+			decoded = decoded + str("%s %02d %04d %02d:%02d\n" % (MONTHS[month - 1], day, year, hour, minute))
+
+			break
+
 
 		return decoded
 
