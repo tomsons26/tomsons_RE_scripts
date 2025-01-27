@@ -78,7 +78,9 @@ class MyChoose(Choose):
 			"libmcrd",
 			"libhmd",		# added in printver 1.02
 			"libmcx",		# added in printver 1.11
-			"mcgui"			# added in printver 1.11
+			"mcgui",		# added in printver 1.11
+			"safechk",		# added in printver 1.13
+			"mcgui_e",		# added in printver 1.13
 		]
 		LIBCOUNT = len(PSXLIBNAMES)
 		
@@ -153,6 +155,7 @@ class MyChoose(Choose):
 
 			decoded = decoded + str("[%x.%x.%x.%x]" % (major1, minor1, minor2, minor3))
 
+			# at some point dates were no longer written, this can be detected by checking if day is 0
 			if day != 0:
 				decoded = decoded + str(" : %s %02d %04d %02d:%02d" % (MONTHS[month - 1], day, year, hour, minute))
 
