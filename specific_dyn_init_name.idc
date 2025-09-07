@@ -122,22 +122,22 @@ static Get_Name(addr)
 
                     if (GetDouble(faddr) == 34.0) {
                         //extra = "_math_pow_sqrt_" + "34";
-                        extra = "_math_cell_width_float";
+                        extra = "_math_ISO_TILE_SIZE";
                         
         
                         // mov operand
                         iaddr = Dword((result + 0x1E) + 2);
                         //Message("0x%X\n", iaddr);
-                        MakeName(iaddr, "CellWidth_float" + "_" + ltoa(addr, 16));
+                        MakeName(iaddr, "ISO_TILE_SIZE" + "_" + ltoa(addr, 16));
                         
                         
                     } else if (GetDouble(faddr) == 256.0){
-                        extra = "_math_pow_sqrt_" + "256";
+                        extra = "_math_CELL_LEPTON_DIAG";
         
                         // mov operand
                         iaddr = Dword((result + 0x1E) + 2);
                         //Message("0x%X\n", iaddr);
-                        MakeName(iaddr, "SOME_DOUBLE" + "_" + ltoa(addr, 16));                        
+                        MakeName(iaddr, "CELL_LEPTON_DIAG" + "_" + ltoa(addr, 16));                        
                     }
                 } else {
                     result = BADADDR;
@@ -200,12 +200,12 @@ static Get_Name(addr)
             result = FindBinary(addr, SEARCH_DOWN, "DB 05 ? ? ? ? 83 EC 08 DC 0D ? ? ? ? DD 1C 24 E8 ? ? ? ? DD 1D ? ? ? ? 83 C4 08 C3");
             if (result != BADADDR && result <= addr + function_size) {
                 found = 1;
-                extra = "_math_cell_slope_angle_1";
+                extra = "_math_CELL_SLOPE_ANGLE";
                 
                 // mov operand
                 iaddr = Dword((result + 0x17) + 2);
                 //Message("0x%X\n", iaddr);
-                MakeName(iaddr, "CellSlopeAngle1" + "_" + ltoa(addr, 16));
+                MakeName(iaddr, "CELL_SLOPE_ANGLE" + "_" + ltoa(addr, 16));
             } else {
                 result = BADADDR;
             }
@@ -278,12 +278,12 @@ static Get_Name(addr)
     result = FindBinary(addr, SEARCH_DOWN, "51 A1 ? ? ? ? 83 EC 08 8D 0C 00 89 4C 24 08 DB 44 24 08 DC 35 ? ? ? ? DD 1C 24 E8 ? ? ? ? DD 1D ? ?");
     if (result != BADADDR && result <= addr + function_size) {
         found = 1;
-        extra = "_math_cell_slope_angle_2";
+        extra = "_math_CELL_DIAG_SLOPE_ANGLE";
         
         // mov operand
         iaddr = Dword((result + 0x22) + 2);
         //Message("0x%X\n", iaddr);
-        MakeName(iaddr, "CellSlopeAngle2" + "_" + ltoa(addr, 16));
+        MakeName(iaddr, "CELL_DIAG_SLOPE_ANGLE" + "_" + ltoa(addr, 16));
     } else {
         result = BADADDR;
     }
