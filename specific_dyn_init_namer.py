@@ -50,51 +50,75 @@ def compare_pattern(ea, s):
 		return 1
 	return 0
 
+def written_to_only_once(addr):
+	i = 0
+	xrefs = idaapi.xrefblk_t()
+	if xrefs.first_to(addr, 0):
+		if xrefs.type == ida_xref.dr_W:
+			i += 1
+		while xrefs.next_to():
+			if xrefs.type == ida_xref.dr_W:
+				i += 1
+	else:
+		i = 1
+
+	if i == 1:
+		return 1
+		
+	return 0
+
+def do_rename(ea, name, allowed):
+	if allowed:
+		ida_name.set_name(ea, name, ida_name.SN_FORCE)
+		#pass
+	else:
+		print("won't rename %x = '%s' %d" % (ea, name, written_to_only_once(ea)))
+
 def do_renaming(ea):
 	p = "DD 05 ? ? ? ? DC 0D ? ? ? ? DD 1D ? ? ? ? C3"
 	if compare_pattern(ea, p) == 1:
 		faddr = get_wide_dword(ea + 2)
 		if GetDouble(faddr) == 0.017453292519943295:
-			ida_name.set_name(
+			do_rename(
 			faddr,
 			"?ONE_RAD@@3NA" + "@" + hex(faddr),
 			1
 			)
 			faddr = get_wide_dword(ea + 2 + 6)
 			if GetDouble(faddr) == 45.0:
-				ida_name.set_name(
+				do_rename(
 				ea, 
 				"??__ERAD_45@@YAXXZ" + "@" + hex(ea), 
 				1
 				)
 			
-				ida_name.set_name(
+				do_rename(
 				get_wide_dword(ea + 2 + 6 + 6),
 				"?RAD_45@@3NA" + "@" + hex(ea),
 				1
 				)
 				return 1
 			elif GetDouble(faddr) == 60.0:
-				ida_name.set_name(
+				do_rename(
 				ea, 
 				"??__ERAD_60@@YAXXZ" + "@" + hex(ea), 
 				1
 				)
 			
-				ida_name.set_name(
+				do_rename(
 				get_wide_dword(ea + 2 + 6 + 6),
 				"?RAD_60@@3NA" + "@" + hex(ea),
 				1
 				)
 				return 1
 			elif GetDouble(faddr) == 90.0:
-				ida_name.set_name(
+				do_rename(
 				ea, 
 				"??__ERAD_90@@YAXXZ" + "@" + hex(ea), 
 				1
 				)
 			
-				ida_name.set_name(
+				do_rename(
 				get_wide_dword(ea + 2 + 6 + 6),
 				"?RAD_90@@3NA" + "@" + hex(ea),
 				1
@@ -112,26 +136,26 @@ def do_renaming(ea):
 	if compare_pattern(ea, p) == 1:
 		faddr = get_wide_dword(ea + 2);
 		if GetDouble(faddr) == 256.0:
-			ida_name.set_name(
+			do_rename(
 			ea, 
 			"??__ECELL_LEPTON_DIAG@@YAXXZ" + "@" + hex(ea), 
 			1
 			)
 		
-			ida_name.set_name(
+			do_rename(
 			get_wide_dword((ea + 0x1E) + 2),
 			"?CELL_LEPTON_DIAG@@3NA" + "@" + hex(ea),
 			1
 			)
 			return 1
 		elif GetDouble(faddr) == 34.0:
-			ida_name.set_name(
+			do_rename(
 			ea, 
 			"??__EISO_TILE_SIZE@@YAXXZ" + "@" + hex(ea), 
 			1
 			)
 		
-			ida_name.set_name(
+			do_rename(
 			get_wide_dword((ea + 0x1E) + 2),
 			"?ISO_TILE_SIZE@@3NA" + "@" + hex(ea),
 			1
@@ -148,13 +172,13 @@ def do_renaming(ea):
 
 		p = "DD 05 ? ? ? ? DD 05 ? ? ? ? E8 ? ? ? ? DC C0 83 EC 08 DD 1C 24 E8 ? ? ? ? DD 1D ? ? ? ? 83 C4 08 C3"
 		if compare_pattern(raddr - 0x1E, p) == 1:
-			ida_name.set_name(
+			do_rename(
 			ea, 
 			"??__EISO_TILE_PIXEL_W@@YAXXZ" + "@" + hex(ea), 
 			1
 			)
 		
-			ida_name.set_name(
+			do_rename(
 			get_wide_dword((ea + 0x0B) + 1), 
 			"?ISO_TILE_PIXEL_W@@3HA" + "@" + hex(ea),
 			1
@@ -166,13 +190,13 @@ def do_renaming(ea):
 
 	p = "A1 ? ? ? ? 8B 0D ? ? ? ? 50 51 E8 ? ? ? ? DC 0D ? ? ? ? 83 C4 08 E8 ? ? ? ? A3 ? ? ? ? C3"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 
 		"??__EISO_TILE_PIXEL_H@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
-		ida_name.set_name(
+		do_rename(
 		get_wide_dword((ea + 0x20) + 1), 
 		"?ISO_TILE_PIXEL_H@@3HA" + "@" + hex(ea),
 		1
@@ -181,13 +205,13 @@ def do_renaming(ea):
 
 	p = "DD 05 ? ? ? ? DC 25 ? ? ? ? 83 EC 08 DD 1C 24 E8 ? ? ? ? DC 0D ? ? ? ? 83 C4 08 DC 0D ? ? ? ? E8"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 
 		"??__ELEVEL_LEPTON_H@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
-		ida_name.set_name(
+		do_rename(
 		get_wide_dword((ea + 0x2B) + 1), 
 		"?LEVEL_LEPTON_H@@3HA" + "@" + hex(ea),
 		1
@@ -196,13 +220,13 @@ def do_renaming(ea):
 
 	p = "DB 05 ? ? ? ? 83 EC 08 DC 0D ? ? ? ? DD 1C 24 E8 ? ? ? ? DD 1D ? ? ? ? 83 C4 08 C3"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 
 		"??__ECELL_SLOPE_ANGLE@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
-		ida_name.set_name(
+		do_rename(
 		get_wide_dword((ea + 0x17) + 2), 
 		"?CELL_SLOPE_ANGLE@@3NA" + "@" + hex(ea),
 		1
@@ -211,14 +235,14 @@ def do_renaming(ea):
 
 	p = "51 A1 ? ? ? ? 83 EC 08 8D 0C 00 89 4C 24 08 DB 44 24 08 DC 35 ? ? ? ? DD 1C 24 E8 ? ? ? ? DD 1D ? ?"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 
 		"??__ECELL_DIAG_SLOPE_ANGLE@@YAXXZ" + "@" + hex(ea),
 		1
 		)
 	
-		ida_name.set_name(
-		get_wide_dword((ea + 0x22) + 2), 		
+		do_rename(
+		get_wide_dword((ea + 0x22) + 2),
 		"?CELL_DIAG_SLOPE_ANGLE@@3NA" + "@" + hex(ea),
 		1
 		)
@@ -226,13 +250,13 @@ def do_renaming(ea):
 
 	p = "51 A1 ? ? ? ? 8D 0C 85 ? ? ? ? 89 4C 24 00 DB 44 24 00 DC 05 ? ? ? ? E8 ? ? ? ? A3 ? ? ? ? 59 C3"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 
 		"??__EBRIDGE_LEPTON_HEIGHT@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
-		ida_name.set_name(
+		do_rename(
 		get_wide_dword((ea + 0x20) + 1), 
 		"?BRIDGE_LEPTON_HEIGHT@@3HA" + "@" + hex(ea),
 		1
@@ -241,14 +265,14 @@ def do_renaming(ea):
 
 	p = "A1 ? ? ? ? 99 2B C2 D1 F8 A3 ? ? ? ? C3"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 	
 		"??__ECELL_PIXEL_H_HALF@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
-		ida_name.set_name(
-		get_wide_dword((ea + 0xA) + 1), 		
+		do_rename(
+		get_wide_dword((ea + 0xA) + 1),
 		"?CELL_PIXEL_H_HALF@@3HA" + "@" + hex(ea),
 		1
 		)
@@ -256,14 +280,14 @@ def do_renaming(ea):
 
 	p = "90 A1 ? ? ? ? A3 ? ? ? ? C3 90"
 	if compare_pattern(ea - 1, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea, 	
 		"??__ECELL_PIXEL_H_HALF_1@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
-		ida_name.set_name(
-		get_wide_dword((ea + 0x5) + 1), 		
+		do_rename(
+		get_wide_dword((ea + 0x5) + 1),
 		"?CELL_PIXEL_H_HALF_1@@3HA" + "@" + hex(ea),
 		1
 		)
@@ -271,59 +295,68 @@ def do_renaming(ea):
 
 	p = "90 33 C0 66 A3 ? ? ? ? 66 A3 ? ? ? ? C3 90"
 	if compare_pattern(ea - 1, p) == 1:
-		ida_name.set_name(
+		data_ea = get_wide_dword((ea + 2) + 2)
+		allowed = written_to_only_once(data_ea)
+
+		do_rename(
 		ea,
 		"??__ECELL_NONE@@YAXXZ" + "@" + hex(ea),
-		1
+		allowed
 		)
 	
-		ida_name.set_name(
-		get_wide_dword((ea + 2) + 2), 		
+		do_rename(
+		data_ea,
 		"?CELL_NONE@@3VCell@@A" + "@" + hex(ea),
-		1
+		allowed
 		)
 		return 1
 
 	p = "90 33 C0 A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C3 90"
 	if compare_pattern(ea - 1, p) == 1:
-		ida_name.set_name(
+		data_ea = get_wide_dword((ea + 2) + 1)
+		allowed = written_to_only_once(data_ea)
+
+		do_rename(
 		ea,
 		"??__ECOORD_NONE@@YAXXZ" + "@" + hex(ea),
-		1
+		allowed
 		)
 	
-		ida_name.set_name(
-		get_wide_dword((ea + 2) + 1),
+		do_rename(
+		data_ea,
 		"?COORD_NONE@@3VCoord@@A" + "@" + hex(ea),
-		1
+		allowed
 		)
 		return 1
 
 	p = "33 C0 A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C3 90"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		data_ea = get_wide_dword((ea + 2) + 1)
+		allowed = written_to_only_once(data_ea)
+
+		do_rename(
 		ea,
 		"??__ERECT_NONE@@YAXXZ" + "@" + hex(ea),
-		1
+		allowed
 		)
 	
-		ida_name.set_name(
-		get_wide_dword((ea + 2) + 1),
+		do_rename(
+		data_ea,
 		"?RECT_NONE@@3VRect@@A" + "@" + hex(ea),
-		1
+		allowed
 		)
 		return 1
 		
 	"""
 	p = "33 C0 68 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C6 05 ? ? ? ? ? A2 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? C7 05 ? ? ?"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea,
 		"_static_init_dvc" + "@" + hex(ea),
 		1
 		)
 		
-		ida_name.set_name(
+		do_rename(
 		get_wide_dword(ea + 2 + 1),
 		"_static_deinit_dvc" + "@" + hex(ea),
 		1
@@ -332,7 +365,7 @@ def do_renaming(ea):
 		
 	p = "B8 ? ? ? ? B9 00 01 00 00 32 D2 88 50 FE 88 50 FF 88 10 83 C0 03 49 75 F2 C3"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea,
 		"_static_init_palette" + "@" + hex(ea),
 		1
@@ -341,7 +374,7 @@ def do_renaming(ea):
 		
 	p = "51 ? ? B9 ? ? ? ? 88 44 24 00 88 44 24 01 88 44 24 02 8D 44 24 00 50 E8 ? ? ? ? 59 C3"
 	if compare_pattern(ea, p) == 1:
-		ida_name.set_name(
+		do_rename(
 		ea,
 		"_static_init_palette" + "@" + hex(ea),
 		1
