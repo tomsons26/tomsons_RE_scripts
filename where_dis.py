@@ -3,16 +3,19 @@
 #
 # Adds the ability to check what module address relates to
 #	to do this it uses a premade list, list is a text file in this format
-#	(0x00563D10, 0x00564840, "movies.cpp")
+#	(0x00563D10, 0x006D4790, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00806D90, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, "movies.obj")
+#	with addresses specifying .text, .rdata, .rdata$r, .xdata, .crt$xcu, .data, .data$r, .bss, .comm, .const, .tls
 #	list can have comments prefixing with #
 #
 # The option to use it shows up in rightclick menu of the disassembly view
 #	'WhereDis' where dis'es
 #	'Reload WhereDis' reloads the list
-#	'Debug WhereDis' checks for duplicates in list
+#	'Debug WhereDis' reports current mapping
+#		used to check for duplicates in list but don't see how it can work in this revision of the script
 #
 # TODO:
 #	cleanup??? surely all this hook stuff isn't needed...?
+#	restore duplicate checking??
 #
 #	Copy the 'where_dis.py' into the plugins directory of IDA
 #	modify WHERE_DIS_INFO_PATH as needed
@@ -24,6 +27,7 @@ from ast import literal_eval
 import ida_kernwin
 import ida_lines
 import idaapi
+
 
 popup_action_names = []
 
@@ -45,14 +49,58 @@ class action_helper(idaapi.action_handler_t):
 	def update(self, ctx):
 		return idaapi.AST_ENABLE_FOR_WIDGET if ctx.form_type == idaapi.BWN_DISASM else idaapi.AST_DISABLE_FOR_WIDGET
 
-where_dis = None
+known_objects = {}
 
-def ReloadWhereDisFile():
-	global where_dis
+# Sentinel values to ignore
+INVALIDS = {0xFFFFFFFF, 0x00000000}
+
+# Fixed section order for each address slot
+SECTIONS = [
+	".text",
+	".rdata",
+	".rdata$r",
+	".xdata",
+	".crt$xcu",
+	".data",
+	".data$r",
+	".bss",
+	".comm",
+	".const",
+	".tls",
+]
+
+def parse_objects_from_file():
+	global known_objects
+	"""
+	Parse tuples like:
+	(0x00685730, 0x006D9E40, ..., "object.obj")
+	Returns dict: { "object.obj": [ {addr, section}, ... ] }
+	"""
 	f = open(WHERE_DIS_INFO_PATH, "r")
 	if f:
-		where_dis = [list(literal_eval(line.strip('#'))) for line in f]
-		where_dis.append((0x00000000, 0xFFFFFFFF, "Unknown"))
+		for line in f:
+			line = line.strip()
+			if not line.startswith("("):
+				continue
+			if line.startswith("#"):
+				continue
+			try:
+				parts = line.strip("()").split(",")
+				*addr_parts, obj_name = parts
+				obj_name = obj_name.strip().strip('"')
+				entries = []
+				for idx, p in enumerate(addr_parts):
+					p = p.strip()
+					if p.startswith("0x"):
+						val = int(p, 16)
+						if val not in INVALIDS:
+							section = SECTIONS[idx] if idx < len(SECTIONS) else f"slot{idx}"
+							entries.append({"addr": val, "section": section})
+				if obj_name not in known_objects:
+					known_objects[obj_name] = []
+				known_objects[obj_name].extend(entries)
+			except Exception as e:
+				print(f"Parse error on line: {line}, {e}")
 		f.close()
 	else:
 		print("WhereDis can't open %s" % WHERE_DIS_INFO_PATH)
@@ -65,13 +113,13 @@ class WhereDisPlugin(idaapi.plugin_t):
 	wanted_hotkey = ""
 
 	def init(self):
-		global where_dis
+		global known_objects
 		idaapi.msg("WhereDis init\n")
 		AddToPopup('wheredisaction:where_action', 'WhereDis', WhereDisAction(), None, None)
 		AddToPopup('wheredisaction:reload_action', 'Reload WhereDis', WhereDisReloadAction(), None, None)
 		AddToPopup('wheredisaction:debug_action', 'Debug WhereDis', WhereDisDebugAction(), None, None)
 		
-		ReloadWhereDisFile()
+		parse_objects_from_file()
 
 		self.hooks = hook_helper()
 		self.hooks.hook()
@@ -88,12 +136,34 @@ class WhereDisPlugin(idaapi.plugin_t):
 		idaapi.unregister_action('wheredisaction:reload_action')
 		idaapi.unregister_action('wheredisaction:debug_action')
 
+
+def find_lesser_closest_object(known_objects, input_addr):
+	"""
+	Return (object_name, closest_addr, delta, section).
+	"""
+	closest_obj = None
+	closest_entry = None
+	closest_delta = None
+
+	for obj, entries in known_objects.items():
+		for entry in entries:
+			addr = entry["addr"]
+			if addr <= input_addr:
+				delta = input_addr - addr
+				if closest_delta is None or delta < closest_delta:
+					closest_delta = delta
+					closest_obj = obj
+					closest_entry = entry
+
+	if closest_obj:
+		return closest_obj, closest_entry["addr"], closest_delta, closest_entry["section"]
+	return None, None, None, None
+
 class WhereDisAction(action_helper):
 	def activate(self, ctx):
-		global where_dis
-		
-		if len(where_dis) == 0:
-			print("where_dis empty!!!!!!")
+		global known_objects
+		if len(known_objects) == 0:
+			print("known_objects empty!!!!!!")
 			return 1
 		
 		t0, t1, view = idaapi.twinpos_t(), idaapi.twinpos_t(), idaapi.get_current_viewer()
@@ -118,10 +188,17 @@ class WhereDisAction(action_helper):
 		while x < end:
 			#print("WhereDis at %x" % x)
 			address = x
-			for astart, aend, filename in where_dis:
+			"""
+			for astart, aend, filename in known_objects:
 				if address >= astart and address < aend:
 					print(format("0x%08X - %s" % (address, filename)))
 					break
+			"""
+			obj, closest_addr, delta, section = find_lesser_closest_object(known_objects, address)
+			if obj:
+				print(f"Best match object: {obj} at {hex(closest_addr)} (delta {delta:#x}, section {section})")
+			else:
+				print("No best match object found.")
 
 			isize = idaapi.get_item_size(x)
 			if isize != 0:
@@ -130,34 +207,54 @@ class WhereDisAction(action_helper):
 				x = x + 1
 
 		return 1
-		
+
 class WhereDisReloadAction(action_helper):
 	def activate(self, ctx):
-		global where_dis
-		if len(where_dis) != 0:
-			del where_dis[:]
-		ReloadWhereDisFile()
-		#print(where_dis)
+		global known_objects
+		if len(known_objects) != 0:
+			del known_objects #[:]
+			known_objects = {}
+		parse_objects_from_file()
+		#print(known_objects)
 		print("WhereDis list reloaded")
 		return 1
 		
 class WhereDisDebugAction(action_helper):
 	def activate(self, ctx):
-		global where_dis
-		if len(where_dis) != 0:
+		global known_objects
+
+		"""
+		Print a table of all objects with their addresses grouped by section.
+		"""
+		print("\n=== Section Map ===")
+		for obj, entries in known_objects.items():
+			print(f"\nObject: {obj}")
+			section_map = {}
+			for entry in entries:
+				sec = entry["section"]
+				addr = entry["addr"]
+				section_map.setdefault(sec, []).append(addr)
+			for sec in SECTIONS:
+				if sec in section_map:
+					addrs = ", ".join(hex(a) for a in section_map[sec])
+					print(f"  {sec:<10} -> {addrs}")
+
+		"""
+		if len(known_objects) != 0:
 			# check for duplicates
-			for i, (s1, en1, f1) in enumerate(where_dis):
-				for j, (s2, en2, f2) in enumerate(where_dis):
+			for i, (s1, en1, f1) in enumerate(known_objects):
+				for j, (s2, en2, f2) in enumerate(known_objects):
 					if i == j:
 						continue
 					if s1 > s2 and s1 < en2:
 						if s1 != 0 and s2 != 0:
 							print("0x%08X overlaps 0x%08X" % (s1, s2))
 		else:
-			print("where_dis empty!!!!!!")
+			print("known_objects empty!!!!!!")
 		
 		
 		print("WhereDis list debug end")
+		"""
 		return 1
 
 def AddToPopup(action_name, display, handler, shortcut, tooltip, icon=None):
