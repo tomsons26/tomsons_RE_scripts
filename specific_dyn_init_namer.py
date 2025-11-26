@@ -414,6 +414,10 @@ if parse:
 		i = i + 1
 
 		ea = get_wide_dword(addr)
+		b = get_wide_byte(ea)
+		# handle jmp
+		if b == 0xE9:
+			ea = ea + get_wide_dword(ea + 1) + 0x5
 		res = do_renaming(ea)
 		#if res:
 		#	print("named %x" % ea)
