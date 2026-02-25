@@ -109,6 +109,12 @@ class MyChoose(Choose):
 
 		# sub esp, BYTE; push esi
 		if self.do_cmp(ea, ([0x83, 0xEC, MASK, 0x56, MASK, MASK, MASK, MASK]), b) == 1: return self.CMP_INDEX
+				
+		# sub esp, BYTE; mov, eax DWORD
+		if self.do_cmp(ea, ([0x83, 0xEC, MASK, 0xA1, MASK, MASK, MASK, MASK]), b) == 1: return self.CMP_INDEX
+
+		# sub esp, BYTE; mov dl, [esp+44h]
+		if self.do_cmp(ea, ([0x83, 0xEC, MASK, 0x8A, MASK, MASK, MASK, MASK]), b) == 1: return self.CMP_INDEX
 		
 		# sub esp, BYTE; mov eax[esp+X]
 		if self.do_cmp(ea, ([0x83, 0xEC, MASK, 0x8B, 0x44, 0x24, MASK, MASK]), b) == 1: return self.CMP_INDEX
@@ -124,6 +130,9 @@ class MyChoose(Choose):
 		
 		# push ecx; push ebx; push esi
 		if self.do_cmp(ea, ([0x51, 0x53, 0x56, MASK, MASK, MASK, MASK, MASK]), b) == 1: return self.CMP_INDEX
+
+		# mov eax, DWORD; call __alloca_probe
+		if self.do_cmp(ea, ([0xB8, MASK, MASK, MASK, MASK, 0xE8, MASK, MASK]), b) == 1: return self.CMP_INDEX
 
 		# is alignment before this?
 		b = get_bytes(ea - 8, 8)
@@ -189,6 +198,18 @@ class MyChoose(Choose):
 		
 		# BEFORE call DWORD;retn;
 		if self.do_cmp(ea, ([MASK, MASK, 0xE8, MASK, MASK, MASK, MASK, 0xC3]), b) == 1: return -self.CMP_INDEX
+		
+		# BEFORE retn BYTE, padding
+		if self.do_cmp(ea, ([MASK, MASK, MASK, 0xC2, MASK, MASK, 0x90, 0x90]), b) == 1: return -self.CMP_INDEX
+		if self.do_cmp(ea, ([MASK, MASK, MASK, MASK, 0xC2, MASK, MASK, 0x90]), b) == 1: return -self.CMP_INDEX
+
+		# BEFORE retn, padding
+		if self.do_cmp(ea, ([MASK, MASK, MASK, MASK, 0xC3, 0x90, 0x90, 0x90]), b) == 1: return -self.CMP_INDEX
+		if self.do_cmp(ea, ([MASK, MASK, MASK, MASK, MASK, 0xC3, 0x90, 0x90]), b) == 1: return -self.CMP_INDEX
+		if self.do_cmp(ea, ([MASK, MASK, MASK, MASK, MASK, MASK, 0xC3, 0x90]), b) == 1: return -self.CMP_INDEX
+
+		# BEFORE padding
+		if self.do_cmp(ea, ([MASK, MASK, MASK, MASK, MASK, 0x90, 0x90, 0x90]), b) == 1: return -self.CMP_INDEX
 
 		return 0
 		
