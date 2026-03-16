@@ -50,7 +50,7 @@ def compare_pattern(ea, s):
 		return 1
 	return 0
 
-def written_to_only_once(addr):
+def write_counts(addr):
 	i = 0
 	xrefs = idaapi.xrefblk_t()
 	if xrefs.first_to(addr, 0):
@@ -59,21 +59,21 @@ def written_to_only_once(addr):
 		while xrefs.next_to():
 			if xrefs.type == ida_xref.dr_W:
 				i += 1
-	else:
-		i = 1
+	#else:
+	#	i = 1
 
-	if i == 1:
-		return 1
-		
-	return 0
+	return i
 
-def do_rename(ea, name, allowed):
-	if allowed:
+def do_rename(ea, name, writes):
+	if writes == 1:
 		renamed = ida_name.set_name(ea, name, ida_name.SN_FORCE)
 		if renamed == False:
-			print("failed to rename %x = '%s'" % (ea, name))
+			if ea != ida_bytes.get_item_head(ea):
+				print("can't rename, is not head %x = '%s'" % (ea, name))
+			else:
+				print("can't rename, set_name failed %x = '%s'" % (ea, name))
 	else:
-		print("won't rename %x = '%s' %d" % (ea, name, written_to_only_once(ea)))
+		print("won't rename, write count = %d, %x = '%s'" % (writes, ea, name))
 
 def do_renaming(ea):
 	p = "DD 05 ? ? ? ? DC 0D ? ? ? ? DD 1D ? ? ? ? C3"
@@ -331,18 +331,18 @@ def do_renaming(ea):
 	p = "90 33 C0 66 A3 ? ? ? ? 66 A3 ? ? ? ? C3 90"
 	if compare_pattern(ea - 1, p) == 1:
 		data_ea = get_wide_dword((ea + 2) + 2)
-		allowed = written_to_only_once(data_ea)
+		writes = write_counts(data_ea)
 
 		do_rename(
 		ea,
 		"??__ECELL_NONE@@YAXXZ" + "@" + hex(ea),
-		allowed
+		writes
 		)
 	
 		do_rename(
 		data_ea,
 		"?CELL_NONE@@3VCell@@A" + "@" + hex(ea),
-		allowed
+		writes
 		)
 		idc.SetType(get_wide_dword((ea + 2) + 2), "Cell")
 		return 1
@@ -350,18 +350,18 @@ def do_renaming(ea):
 	p = "90 33 C0 A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C3 90"
 	if compare_pattern(ea - 1, p) == 1:
 		data_ea = get_wide_dword((ea + 2) + 1)
-		allowed = written_to_only_once(data_ea)
+		writes = write_counts(data_ea)
 
 		do_rename(
 		ea,
 		"??__ECOORD_NONE@@YAXXZ" + "@" + hex(ea),
-		allowed
+		writes
 		)
 	
 		do_rename(
 		data_ea,
 		"?COORD_NONE@@3VCoord@@A" + "@" + hex(ea),
-		allowed
+		writes
 		)
 		idc.SetType(get_wide_dword((ea + 2) + 1), "Coord")
 		return 1
@@ -369,18 +369,18 @@ def do_renaming(ea):
 	p = "33 C0 A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C3 90"
 	if compare_pattern(ea, p) == 1:
 		data_ea = get_wide_dword((ea + 2) + 1)
-		allowed = written_to_only_once(data_ea)
+		writes = write_counts(data_ea)
 
 		do_rename(
 		ea,
 		"??__ERECT_NONE@@YAXXZ" + "@" + hex(ea),
-		allowed
+		writes
 		)
 	
 		do_rename(
 		data_ea,
 		"?RECT_NONE@@3VRect@@A" + "@" + hex(ea),
-		allowed
+		writes
 		)
 		idc.SetType(get_wide_dword((ea + 2) + 1), "Rect")
 		return 1
