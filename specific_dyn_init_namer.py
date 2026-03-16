@@ -28,7 +28,7 @@ def do_cmp(ea, base, data):
 		bb = base[i]
 		tb = test[i]
 		if bb == MASK:
-			continue;
+			continue
 		if bb != tb:
 			return 0
 
@@ -69,8 +69,9 @@ def written_to_only_once(addr):
 
 def do_rename(ea, name, allowed):
 	if allowed:
-		ida_name.set_name(ea, name, ida_name.SN_FORCE)
-		#pass
+		renamed = ida_name.set_name(ea, name, ida_name.SN_FORCE)
+		if renamed == False:
+			print("failed to rename %x = '%s'" % (ea, name))
 	else:
 		print("won't rename %x = '%s' %d" % (ea, name, written_to_only_once(ea)))
 
@@ -134,7 +135,7 @@ def do_renaming(ea):
 	
 	p = "DD 05 ? ? ? ? DD 05 ? ? ? ? E8 ? ? ? ? DC C0 83 EC 08 DD 1C 24 E8 ? ? ? ? DD 1D ? ? ? ? 83 C4 08 C3"
 	if compare_pattern(ea, p) == 1:
-		faddr = get_wide_dword(ea + 2);
+		faddr = get_wide_dword(ea + 2)
 		if GetDouble(faddr) == 256.0:
 			do_rename(
 			ea, 
@@ -218,6 +219,40 @@ def do_renaming(ea):
 		)
 		return 1
 
+	p = "DD 05 ? ? ? ? DC 35 ? ? ? ? DD 1D ? ? ? ? C3"
+	if compare_pattern(ea, p) == 1:
+		faddr1 = get_wide_dword(ea + 6 + 2)
+		faddr2 = get_wide_dword(ea + 2)
+		if GetDouble(faddr1) == 60.0:
+			do_rename(
+			ea, 
+			"??__ELEPTONS_PER_PIXEL_DIAG@@YAXXZ" + "@" + hex(ea), 
+			1
+			)
+		
+			do_rename(
+			get_wide_dword(ea + 6 + 6 + 2), 
+			"?LEPTONS_PER_PIXEL_DIAG@@3NB" + "@" + hex(ea),
+			1
+			)
+			return 1
+		elif GetDouble(faddr2) == 1.0:
+			do_rename(
+			ea, 
+			"??__EPIXELS_PER_LEPTON_DIAG@@YAXXZ" + "@" + hex(ea), 
+			1
+			)
+		
+			do_rename(
+			get_wide_dword(ea + 6 + 6 + 2), 
+			"?PIXELS_PER_LEPTON_DIAG@@3NB" + "@" + hex(ea),
+			1
+			)
+			return 1
+		else:
+			print("failed %x %f %d" % (ea, GetDouble(faddr), GetDouble(faddr) == 256.0))
+			return 0
+
 	p = "DB 05 ? ? ? ? 83 EC 08 DC 0D ? ? ? ? DD 1C 24 E8 ? ? ? ? DD 1D ? ? ? ? 83 C4 08 C3"
 	if compare_pattern(ea, p) == 1:
 		do_rename(
@@ -267,13 +302,13 @@ def do_renaming(ea):
 	if compare_pattern(ea, p) == 1:
 		do_rename(
 		ea, 	
-		"??__ECELL_PIXEL_H_HALF@@YAXXZ" + "@" + hex(ea), 
+		"??__ELEVEL_PIXEL_H@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
 		do_rename(
 		get_wide_dword((ea + 0xA) + 1),
-		"?CELL_PIXEL_H_HALF@@3HA" + "@" + hex(ea),
+		"?LEVEL_PIXEL_H@@3HA" + "@" + hex(ea),
 		1
 		)
 		return 1
@@ -282,13 +317,13 @@ def do_renaming(ea):
 	if compare_pattern(ea - 1, p) == 1:
 		do_rename(
 		ea, 	
-		"??__ECELL_PIXEL_H_HALF_1@@YAXXZ" + "@" + hex(ea), 
+		"??__ELEVEL_PIXEL_H_1@@YAXXZ" + "@" + hex(ea), 
 		1
 		)
 	
 		do_rename(
 		get_wide_dword((ea + 0x5) + 1),
-		"?CELL_PIXEL_H_HALF_1@@3HA" + "@" + hex(ea),
+		"?LEVEL_PIXEL_H_1@@3HA" + "@" + hex(ea),
 		1
 		)
 		return 1
@@ -309,6 +344,7 @@ def do_renaming(ea):
 		"?CELL_NONE@@3VCell@@A" + "@" + hex(ea),
 		allowed
 		)
+		idc.SetType(get_wide_dword((ea + 2) + 2), "Cell")
 		return 1
 
 	p = "90 33 C0 A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C3 90"
@@ -327,6 +363,7 @@ def do_renaming(ea):
 		"?COORD_NONE@@3VCoord@@A" + "@" + hex(ea),
 		allowed
 		)
+		idc.SetType(get_wide_dword((ea + 2) + 1), "Coord")
 		return 1
 
 	p = "33 C0 A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C3 90"
@@ -345,40 +382,41 @@ def do_renaming(ea):
 		"?RECT_NONE@@3VRect@@A" + "@" + hex(ea),
 		allowed
 		)
+		idc.SetType(get_wide_dword((ea + 2) + 1), "Rect")
 		return 1
 		
 	"""
 	p = "33 C0 68 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? C6 05 ? ? ? ? ? A2 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? C7 05 ? ? ?"
 	if compare_pattern(ea, p) == 1:
-		do_rename(
-		ea,
-		"_static_init_dvc" + "@" + hex(ea),
-		1
-		)
+		#do_rename(
+		#ea,
+		#"_static_init_dvc" + "@" + hex(ea),
+		#1
+		#)
 		
-		do_rename(
-		get_wide_dword(ea + 2 + 1),
-		"_static_deinit_dvc" + "@" + hex(ea),
-		1
-		)
+		#do_rename(
+		#get_wide_dword(ea + 2 + 1),
+		#"_static_deinit_dvc" + "@" + hex(ea),
+		#1
+		#)
 		return 1
 		
 	p = "B8 ? ? ? ? B9 00 01 00 00 32 D2 88 50 FE 88 50 FF 88 10 83 C0 03 49 75 F2 C3"
 	if compare_pattern(ea, p) == 1:
-		do_rename(
-		ea,
-		"_static_init_palette" + "@" + hex(ea),
-		1
-		)
+		#do_rename(
+		#ea,
+		#"_static_init_palette" + "@" + hex(ea),
+		#1
+		#)
 		return 1
 		
 	p = "51 ? ? B9 ? ? ? ? 88 44 24 00 88 44 24 01 88 44 24 02 8D 44 24 00 50 E8 ? ? ? ? 59 C3"
 	if compare_pattern(ea, p) == 1:
-		do_rename(
-		ea,
-		"_static_init_palette" + "@" + hex(ea),
-		1
-		)
+		#do_rename(
+		#ea,
+		#"_static_init_palette" + "@" + hex(ea),
+		#1
+		#)
 		return 1
 	"""
 
@@ -390,7 +428,7 @@ parse = 0
 
 # !! change segment name if needed
 segm = get_segm_start(get_segm_by_sel(selector_by_name(".data")))
-print("segment at 0x%X\n" % segm);
+print("segment at 0x%X\n" % segm)
 
 # is the address valid, does it start with 0 as MSVC dyn init list starts, is it a msvc binary
 if (segm != idaapi.BADADDR) and get_wide_dword(segm) == 0 and idc.get_inf_attr(INF_COMPILER) == COMP_MS:
