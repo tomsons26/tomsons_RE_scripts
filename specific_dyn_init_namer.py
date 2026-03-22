@@ -229,7 +229,11 @@ def do_renaming(ea):
 			"??__ELEPTONS_PER_PIXEL_DIAG@@YAXXZ" + "@" + hex(ea), 
 			1
 			)
-		
+			do_rename(
+			get_wide_dword(ea + 6 + 2), 
+			"?DBL_ISO_TILE_PIXEL_W@@3NB" + "@" + hex(ea),
+			1
+			)
 			do_rename(
 			get_wide_dword(ea + 6 + 6 + 2), 
 			"?LEPTONS_PER_PIXEL_DIAG@@3NB" + "@" + hex(ea),
