@@ -1,12 +1,14 @@
 # run this post class informer to fix rtti and vtable symbols
 
+import idautils
+
 vtlist = []
 rtlist = []
 def fixup_name(ea, c):
     nnn = ""
     n = get_name(ea, 0)
     nn = n.split("@@", 1)[0]
-   
+
     if "struct IConnectionPointContainer:" in c:
         nnn = nn + "@@6BIConnectionPointContainer@@@"
 
@@ -18,21 +20,27 @@ def fixup_name(ea, c):
 
     elif ": struct IStream" in c:
         nnn = nn + "@@6BIStream@@@"
- 
+
     elif "struct ILinkStream:" in c:
         nnn = nn + "@@6BILinkStream@@@"
 
     elif "IPersistStream" in c:
         nnn = nn + "@@6BIPersistStream@@@"
-    
+
     elif "struct IRTTITypeInfo:" in c:
         nnn = nn + "@@6BIRTTITypeInfo@@@"
-    
+
     elif "struct ILocomotion:" in c:
         nnn = nn + "@@6BILocomotion@@@"
     
+    elif "struct INoticeSink:" in c:
+        nnn = nn + "@@6BINoticeSink@@@"
+
+    elif "struct INoticeSource:" in c:
+        nnn = nn + "@@6BINoticeSource@@@"
+
+    # do nothings
     elif "struct IPiggyback:" in c:
-        # do nothing
         nnn = nn + "@@6B@"
     
     elif "struct IFlyControl:" in c:
@@ -47,7 +55,7 @@ def get_new_name(ea):
         n = fixup_name(ea, c)
         if n != "":
             vtlist.append("0x%X,%s,0,false" % (ea, n))
-            ra = Dword(ea - 4)
+            ra = idc.get_wide_dword(ea - 4)
             r = fixup_name(ra, c)
             if r != "":
                 rtlist.append("0x%X,%s,0,false" % (ra, r))
