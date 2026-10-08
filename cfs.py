@@ -5,7 +5,7 @@
 # To import a list "File", "Load File", "CFH Hash File"
 #
 # Maybe TODO:
-#   backport it to IDA 7.0
+#   Handle MIPS, ARM, PPC relocs??
 #
 # Quite modified version of https://github.com/cra0/ida-scripts/tree/master/plugins
 #   Unlike the original this combines import and export features in same file
@@ -18,7 +18,7 @@
 
 PLUGIN_NAME = "Import/Export Function Signature Plugin"
 
-__VERSION__ = '0.0.2'
+__VERSION__ = '0.0.3'
 __AUTHOR__ = 'tomsons26, cra0'
 
 import os
@@ -26,10 +26,6 @@ import sys
 import idc
 import idaapi
 import idautils
-import ida_bytes
-import ida_funcs
-import ida_name
-import ida_kernwin
 import ida_ua
 import ida_ida
 import hashlib
@@ -46,9 +42,21 @@ idaver_74newer = (major == 7 and minor >= 4)
 idaver_8newer = (major >= 8)
 
 if idaver_74newer or idaver_8newer:
+	import ida_bytes
+	import ida_funcs
+	import ida_name
+	import ida_kernwin
+
 	newer_version_compatible = True
+	NO_UNDO = ida_kernwin.ADF_NO_UNDO
 else:
+	import ida_bytes as idc
+	import ida_funcs as idc
+	import ida_name as idc
+	import ida_kernwin as idc
+
 	newer_version_compatible = False
+	NO_UNDO = 0
 
 if newer_version_compatible:
 	#IDA 7.4+
@@ -120,7 +128,7 @@ class ImportFileMenuHandler(idaapi.action_handler_t):
 			sig = sig_maker.make_sig_default(start, end)
 
 			if sig is None or sig == "":
-				print(f"Failed to make a signature for function {func_name} at {start:x}")
+				print("Failed to make a signature for function %s at %x" % (func_name, start))
 				continue
 
 			sig_list.append(FunctionHash(start, sha1(sig.encode('utf-8')).hexdigest()))
@@ -249,7 +257,7 @@ class ImportFileMenuHandler(idaapi.action_handler_t):
 		sig_file_path = idaapi.ask_file(0, "*.cfh", "Function Hash Definition File")
 		if sig_file_path:
 			print("------------------------------------------")
-			print(f"{PLUGIN_NAME} {__VERSION__} - {__AUTHOR__}")
+			print("%s %s - %s" % (PLUGIN_NAME, __VERSION__, __AUTHOR__))
 			print("Parsing:", sig_file_path)
 
 			# Show the "Please wait" dialog before starting the heavy sigfind operation
@@ -367,7 +375,7 @@ class CFSSignaturePlugin(idaapi.plugin_t):
 				"",                                                         # Optional: action shortcut
 				"Export Hashes",                                        # Optional: tooltip
 				35,                                                         # Icon
-				ida_kernwin.ADF_NO_UNDO
+				NO_UNDO
 			)
 		else:
 			# Describe the action using python2 copy
@@ -378,7 +386,7 @@ class CFSSignaturePlugin(idaapi.plugin_t):
 				"",                                                     # Optional: action shortcut
 				"Export Hashes",                                    # Optional: tooltip
 				35,                                                     # Icon
-				ida_kernwin.ADF_NO_UNDO
+				NO_UNDO
 			)
 
 		# register the action with IDA
@@ -392,7 +400,7 @@ class CFSSignaturePlugin(idaapi.plugin_t):
 				"",   # Optional: the action shortcut.
 				'Import Hashes',  # Optional: the action tooltip.
 				self.ACTION_TOOLTIP_ICON,
-				ida_kernwin.ADF_NO_UNDO
+				NO_UNDO
 			)
 		else:
 			# Describe the action using python2 copy
@@ -403,7 +411,7 @@ class CFSSignaturePlugin(idaapi.plugin_t):
 				"",   # Optional: the action shortcut.
 				'Import Hashes',  # Optional: the action tooltip.
 				self.ACTION_TOOLTIP_ICON,
-				ida_kernwin.ADF_NO_UNDO
+				NO_UNDO
 			)
 
 		# register the action with IDA
@@ -640,7 +648,7 @@ def export_signatures_go(ctx):
 			sig = sig_maker.make_sig_default(start, end)
 
 			if sig is None or sig == "":
-				print(f"Failed to make a signature for function {func_name} at {start:x}")
+				print("Failed to make a signature for function %s at %x" % (func_name, start))
 				continue
 
 			prefix = ""
@@ -653,7 +661,7 @@ def export_signatures_go(ctx):
 			#sig_list.append(f"{count},\"{func_name}\",\"{sig}\"\n")
 			#sig_list.append(f"{prefix}\"{func_name}\",\"{sig}\"\n")
 			#sig_list.append(f"\"{h}\",//\"{func_name}\",\"{sig}\"\n")
-			sig_list.append(f"{prefix}\"{h}\",//\"{func_name}\"\n")
+			sig_list.append("%s\"%s\",//\"%s\"\n" % (prefix, h, func_name))
 			count += 1
 
 		if count:
@@ -668,7 +676,7 @@ def export_signatures_go(ctx):
 
 	idaapi.hide_wait_box()
 
-	print(f"Exported {count} function signatures to {filename}\n")
+	print("Exported %d function signatures to %s\n" % (count, filename))
 
 #------------------------------------------------------------------------------
 # IDA ctxt
