@@ -107,7 +107,7 @@ class MyChoose(Choose):
 		end_ea = ida_ida.inf_get_max_ea()
 		list = []
 		
-		# letter pattern Ps
+		# letter pattern PsII
 		pattern = "50 73 49 49"
 
 		while True:
