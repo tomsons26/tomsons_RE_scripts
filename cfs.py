@@ -18,7 +18,7 @@
 
 PLUGIN_NAME = "Import/Export Function Signature Plugin"
 
-__VERSION__ = '0.0.31'
+__VERSION__ = '0.0.32'
 __AUTHOR__ = 'tomsons26, cra0'
 
 import os
@@ -28,6 +28,7 @@ import idaapi
 import idautils
 import ida_ua
 import ida_ida
+import ida_segment
 import hashlib
 
 from hashlib import sha1
@@ -40,13 +41,16 @@ using_pyqt5 = using_ida7api or (major == 6 and minor >= 9)
 
 idaver_74newer = (major == 7 and minor >= 4)
 idaver_8newer = (major >= 8)
+idaver_9newer = (major >= 9)
 
 if idaver_74newer or idaver_8newer:
 	import ida_bytes
 	import ida_funcs
 	import ida_name
 	import ida_kernwin
-	import ida_dirtree
+
+	if idaver_9newer:
+		import ida_dirtree
 
 	newer_version_compatible = True
 	NO_UNDO = ida_kernwin.ADF_NO_UNDO
@@ -55,6 +59,7 @@ else:
 	import ida_funcs as idc
 	import ida_name as idc
 	import ida_kernwin as idc
+	import ida_dirtree as idc
 
 	newer_version_compatible = False
 	NO_UNDO = 0
@@ -550,7 +555,19 @@ def is_subOrAdd_instruction(insn):
 
 class SigMaker:
 	def __init__(self):
-		pass
+		# determine segment bitness
+		# this is used to pick best min instruction size for 16 or 32 bit
+		bitness = ida_segment.getseg(idc.get_first_seg()).bitness
+		# 16 bit
+		if bitness == 0:
+			self.min_inst_size = 4
+		# 32 bit
+		elif bitness == 1:
+			self.min_inst_size = 5
+		# others
+		else:
+			self.min_inst_size = 5
+		#pass
 
 	def make_sig_default(self, start, end):
 		signature = []
@@ -566,7 +583,7 @@ class SigMaker:
 			if ida_ua.decode_insn(instruction, current_address) == 0:
 				break
 
-			if instruction.size < 5:
+			if instruction.size < self.min_inst_size:
 				add_bytes_to_sig(signature, current_address, instruction.size)
 			else:
 				add_ins_to_sig(instruction, signature)
@@ -595,7 +612,7 @@ class SigMaker:
 				current_address += instruction.size
 				continue
 
-			if instruction.size < 5:
+			if instruction.size < self.min_inst_size:
 				add_bytes_to_sig(signature, current_address, instruction.size)
 			else:
 				add_ins_to_sig(instruction, signature)
@@ -614,7 +631,7 @@ def export_signatures_go(ctx):
 			pfn = ida_funcs.getn_func(pfn_idx)
 			if pfn:
 				selected_funcs.append(pfn.start_ea)
-	else:
+	elif idaver_9newer:
 		print("IDA BUG, chooser_selection is NULL, trying workaround.")
 
 		# Get the directory tree handler for functions
@@ -629,6 +646,8 @@ def export_signatures_go(ctx):
 			pfn = idc.get_name_ea(idaapi.BADADDR, func_name)
 			if pfn and pfn != idaapi.BADADDR:
 				selected_funcs.append(pfn)
+	else:
+		print("Nothing selected!?.")
 
 	if not selected_funcs:
 		print("No functions selected.")
@@ -682,6 +701,7 @@ def export_signatures_go(ctx):
 			#sig_list.append(f"{count},\"{func_name}\",\"{sig}\"\n")
 			#sig_list.append(f"{prefix}\"{func_name}\",\"{sig}\"\n")
 			#sig_list.append(f"\"{h}\",//\"{func_name}\",\"{sig}\"\n")
+			#sig_list.append("%s\"%s\",//\"%s\" '%s'\n" % (prefix, h, func_name, sig)) # for debugging
 			sig_list.append("%s\"%s\",//\"%s\"\n" % (prefix, h, func_name))
 			count += 1
 
