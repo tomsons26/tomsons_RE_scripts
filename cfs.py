@@ -560,7 +560,7 @@ class SigMaker:
 		bitness = ida_segment.getseg(idc.get_first_seg()).bitness
 		# 16 bit
 		if bitness == 0:
-			self.min_inst_size = 4
+			self.min_inst_size = 3
 		# 32 bit
 		elif bitness == 1:
 			self.min_inst_size = 5
