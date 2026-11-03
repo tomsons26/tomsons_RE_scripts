@@ -18,7 +18,7 @@
 
 PLUGIN_NAME = "Import/Export Function Signature Plugin"
 
-__VERSION__ = '0.0.3'
+__VERSION__ = '0.0.31'
 __AUTHOR__ = 'tomsons26, cra0'
 
 import os
@@ -46,6 +46,7 @@ if idaver_74newer or idaver_8newer:
 	import ida_funcs
 	import ida_name
 	import ida_kernwin
+	import ida_dirtree
 
 	newer_version_compatible = True
 	NO_UNDO = ida_kernwin.ADF_NO_UNDO
@@ -525,6 +526,10 @@ def add_ins_to_sig(instruction, sig):
 
 	if match_operands(instruction, 0, size):
 		add_bytes_to_sig(sig, instruction.ea + size, instruction.size - size)
+	# assumption here is if its prefixed with a segment it must be a thing that needs masking
+	# dunno if this is correct but better than nothing
+	elif instruction.segpref:
+		add_white_spaces_to_sig(sig, instruction.size - size)
 	else:
 		add_white_spaces_to_sig(sig, instruction.size - size)
 
@@ -604,10 +609,26 @@ def export_signatures_go(ctx):
 
 	selected_funcs = []
 	# fill address array
-	for pfn_idx in ctx.chooser_selection:
-		pfn = ida_funcs.getn_func(pfn_idx)
-		if pfn:
-			selected_funcs.append(pfn.start_ea)
+	if ctx.chooser_selection and len(ctx.chooser_selection) != 0:
+		for pfn_idx in ctx.chooser_selection:
+			pfn = ida_funcs.getn_func(pfn_idx)
+			if pfn:
+				selected_funcs.append(pfn.start_ea)
+	else:
+		print("IDA BUG, chooser_selection is NULL, trying workaround.")
+
+		# Get the directory tree handler for functions
+		dirtree = ida_dirtree.get_std_dirtree(ida_dirtree.DIRTREE_FUNCS)
+
+		for idx in ctx.dirtree_selection:
+			# Resolve the idx back to its absolute path/name string
+			path = dirtree.get_abspath(idx)
+			# Extract the function name from the path and find its address
+			func_name = path.split('/')[-1]
+			# (Or use dirtree.resolve_path if processing directories)
+			pfn = idc.get_name_ea(idaapi.BADADDR, func_name)
+			if pfn and pfn != idaapi.BADADDR:
+				selected_funcs.append(pfn)
 
 	if not selected_funcs:
 		print("No functions selected.")
