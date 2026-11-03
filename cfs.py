@@ -643,9 +643,9 @@ def export_signatures_go(ctx):
 			# Extract the function name from the path and find its address
 			func_name = path.split('/')[-1]
 			# (Or use dirtree.resolve_path if processing directories)
-			pfn = idc.get_name_ea(idaapi.BADADDR, func_name)
-			if pfn and pfn != idaapi.BADADDR:
-				selected_funcs.append(pfn)
+			faddr = idc.get_name_ea(idaapi.BADADDR, func_name)
+			if faddr != idaapi.BADADDR:
+				selected_funcs.append(faddr)
 	else:
 		print("Nothing selected!?.")
 
